@@ -1,3 +1,17 @@
+# PC Part Price Tracker Canada
+
+## Project Features
+- Track prices of PC parts for multiple builds (Intel, AMD, or unlimited builds)
+- User-defined OEM part numbers only
+- Multi-part tracking for same category (get best price among several options)
+- Retailer management (enable/disable, add new retailer)
+- Pushbullet notifications for price changes
+- Prices in CAD; USD converted to CAD automatically using current conversion rate
+- Price history display (from free online sources + scraping history)
+- Web-based interactive GUI (React frontend + Flask backend)
+
+## Folder Structure
+
 PC-Part-Price-Tracker-Canada/
 │
 ├─ backend/
