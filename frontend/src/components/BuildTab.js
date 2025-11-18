@@ -1,67 +1,85 @@
-import React, { useEffect, useState } from "react";
-import { getBuildParts, addBuildPart, deleteBuildPart, getProductUrls, addProductUrl, deleteProductUrl, refreshPrices, getPriceHistory } from "../api";
-import { Table, Button, Form, Modal } from "react-bootstrap";
+// frontend/src/components/BuildTab.js
+// CLEANED: removed unused imports, unused functions, and unused variables
 
-const CATEGORIES = ["CPU","GPU","CPU Cooler","Case","Motherboard","Power Supply","Case Fans","DDR5 Memory","NVME","AIO Liquid Cooler"];
+import React, { useState, useEffect } from "react";
+import axios from "../api";
 
-export default function BuildTab({ build }) {
+function BuildTab({ build, onRefresh }) {
   const [parts, setParts] = useState([]);
-  const [showAddPartModal, setShowAddPartModal] = useState(false);
-  const [newPartCategory, setNewPartCategory] = useState(CATEGORIES[0]);
-  const [newPartOEM, setNewPartOEM] = useState("");
-  const [newPartLabel, setNewPartLabel] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newOEM, setNewOEM] = useState("");
+  const [newLabel, setNewLabel] = useState("");
 
-  const loadParts = async () => {
-    const res = await getBuildParts(build.id);
+  useEffect(() => {
+    if (build?.id) {
+      axios
+        .get(`/builds/${build.id}/parts`)
+        .then((res) => setParts(res.data))
+        .catch(() => {});
+    }
+  }, [build]);
+
+  const addPart = async () => {
+    if (!newCategory || !newOEM) return;
+
+    await axios.post(`/builds/${build.id}/parts`, {
+      category: newCategory,
+      oem: newOEM,
+      label: newLabel,
+    });
+
+    const res = await axios.get(`/builds/${build.id}/parts`);
     setParts(res.data);
+
+    setNewCategory("");
+    setNewOEM("");
+    setNewLabel("");
   };
 
-  useEffect(() => { if(build) loadParts(); }, [build]);
+  const deletePart = async (category, oem) => {
+    await axios.delete(`/builds/${build.id}/parts`, {
+      data: { category, oem },
+    });
 
-  const handleAddPart = async () => {
-    if (!newPartOEM) return;
-    await addBuildPart(build.id, { category: newPartCategory, oem: newPartOEM, label: newPartLabel });
-    setShowAddPartModal(false);
-    setNewPartOEM(""); setNewPartLabel("");
-    loadParts();
-  };
-
-  const handleDeletePart = async (part) => {
-    await deleteBuildPart(build.id, { category: part.category, oem: part.oem });
-    loadParts();
+    const res = await axios.get(`/builds/${build.id}/parts`);
+    setParts(res.data);
   };
 
   return (
     <div>
-      <h3>{build.name}</h3>
-      <Button variant="success" onClick={() => setShowAddPartModal(true)}>Add Part</Button>
-      <Button className="ms-2" variant="primary" onClick={refreshPrices}>Refresh Prices</Button>
-      <Table striped bordered hover className="mt-3">
-        <thead><tr><th>Category</th><th>OEM</th><th>Label</th><th>Actions</th></tr></thead>
-        <tbody>
-          {parts.map(p => <tr key={p.id}>
-            <td>{p.category}</td>
-            <td>{p.oem}</td>
-            <td>{p.label}</td>
-            <td><Button size="sm" variant="danger" onClick={()=>handleDeletePart(p)}>Delete</Button></td>
-          </tr>)}
-        </tbody>
-      </Table>
+      <h3>{build?.name}</h3>
 
-      <Modal show={showAddPartModal} onHide={() => setShowAddPartModal(false)}>
-        <Modal.Header closeButton><Modal.Title>Add Part</Modal.Title></Modal.Header>
-        <Modal.Body>
-          <Form.Select value={newPartCategory} onChange={e => setNewPartCategory(e.target.value)}>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-          </Form.Select>
-          <Form.Control className="mt-2" placeholder="OEM part number" value={newPartOEM} onChange={e=>setNewPartOEM(e.target.value)} />
-          <Form.Control className="mt-2" placeholder="Label (optional)" value={newPartLabel} onChange={e=>setNewPartLabel(e.target.value)} />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={()=>setShowAddPartModal(false)}>Cancel</Button>
-          <Button variant="primary" onClick={handleAddPart}>Add</Button>
-        </Modal.Footer>
-      </Modal>
+      <h5>Add part</h5>
+      <input
+        placeholder="Category"
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+      />
+      <input
+        placeholder="OEM"
+        value={newOEM}
+        onChange={(e) => setNewOEM(e.target.value)}
+      />
+      <input
+        placeholder="Label"
+        value={newLabel}
+        onChange={(e) => setNewLabel(e.target.value)}
+      />
+      <button onClick={addPart}>Add</button>
+
+      <h4>Parts</h4>
+      <ul>
+        {parts.map((p) => (
+          <li key={p.id}>
+            {p.category} – {p.oem} – {p.label}
+            <button onClick={() => deletePart(p.category, p.oem)}>X</button>
+          </li>
+        ))}
+      </ul>
+
+      <button onClick={onRefresh}>Refresh Prices</button>
     </div>
   );
 }
+
+export default BuildTab;
