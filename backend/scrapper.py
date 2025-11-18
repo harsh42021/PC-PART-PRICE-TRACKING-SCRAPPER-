@@ -1,4 +1,4 @@
-# backend/scraper.py
+# backend/scraper.py (fixed and complete)
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -25,6 +25,7 @@ def detect_currency(price_text):
         return "CAD"
     if "US$" in t or "USD" in t:
         return "USD"
+    # ambiguous "$" — unknown
     if t.strip().startswith("$"):
         return None
     return None
@@ -41,13 +42,14 @@ def normalize_price_to_cad(price_text, retailer_default_currency="CAD"):
         return (round(num * rate, 2), "USD", num)
     if detected == "CAD":
         return (round(num, 2), "CAD", num)
+    # fallback: retailer default
     if retailer_default_currency and retailer_default_currency.upper() == "USD":
         rate = get_usd_to_cad_rate()
         return (round(num * rate, 2), "USD(default)", num)
     return (round(num, 2), "CAD(assumed)", num)
 
 
-# Built-in scrapers
+# Built-in scrapers: each returns dict or raises
 def _scrape_canadacomputers(url):
     r = requests.get(url, headers=HEADERS, timeout=15); r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
@@ -149,6 +151,10 @@ BUILTINS = {
 }
 
 def scrape_with_retailer(url, retailer_row):
+    """
+    Scrape a URL using built-in logic for known retailers or a simple fallback for custom retailers.
+    retailer_row is a dict with keys: name, domain, price_selector, sold_by_selector, sold_by_required, default_currency
+    """
     name = (retailer_row.get("name") or "").lower()
     domain = (retailer_row.get("domain") or "").lower()
     for frag, fn in BUILTINS.items():
@@ -162,7 +168,7 @@ def scrape_with_retailer(url, retailer_row):
             if sold_req and sold_req not in seller_text:
                 return {"error": True, "message": "Listing not sold & shipped by retailer (marketplace or third-party)."}
             return res
-    # custom retailer
+    # custom retailer fallback: try to find price and optionally sold_by info using selectors
     try:
         r = requests.get(url, headers=HEADERS, timeout=15); r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
@@ -185,7 +191,7 @@ def scrape_with_retailer(url, retailer_row):
         if sold_req:
             if not sold_by_text or sold_req not in sold_by_text.lower():
                 return {"error": True, "message": "Listing not sold & shipped by retailer (marketplace or third-party)."}
-        price_cad, curr, raw_num = normalize_price_to_cad(price_text)
+        price_cad, curr, raw_num = normalize_price_to_cad(price_text, retailer_default_currency=retailer_row.get("default_currency","CAD"))
         availability = None
         if soup.find(string=re.compile(r"Out of Stock", re.I)): availability = "Out of Stock"
         elif soup.find(string=re.compile(r"In stock|Available", re.I)): availability = "In Stock"
