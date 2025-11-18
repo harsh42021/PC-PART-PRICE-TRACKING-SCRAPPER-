@@ -1,24 +1,20 @@
-import axios from 'axios';
+// frontend/src/api.js
+// Creates a pre-configured axios instance for API requests
 
-const API_BASE = "";
+import axios from "axios";
 
-export const getHealth = () => axios.get(`${API_BASE}/api/health`);
-export const getRetailers = () => axios.get(`${API_BASE}/api/retailers`);
-export const addRetailer = (payload) => axios.post(`${API_BASE}/api/retailers`, payload);
-export const toggleRetailer = (id) => axios.post(`${API_BASE}/api/retailers/${id}/toggle`);
+const instance = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+  timeout: 20000,
+});
 
-export const getBuilds = () => axios.get(`${API_BASE}/api/builds`);
-export const addBuild = (payload) => axios.post(`${API_BASE}/api/builds`, payload);
-export const getBuildParts = (build_id) => axios.get(`${API_BASE}/api/builds/${build_id}/parts`);
-export const addBuildPart = (build_id, payload) => axios.post(`${API_BASE}/api/builds/${build_id}/parts`, payload);
-export const deleteBuildPart = (build_id, payload) => axios.delete(`${API_BASE}/api/builds/${build_id}/parts`, { data: payload });
+// Optional logging interceptor (not required, but useful)
+instance.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    console.error("API Error:", err?.response || err);
+    return Promise.reject(err);
+  }
+);
 
-export const getProductUrls = (oem) => axios.get(`${API_BASE}/api/product_urls/${oem}`);
-export const addProductUrl = (oem, payload) => axios.post(`${API_BASE}/api/product_urls/${oem}`, payload);
-export const deleteProductUrl = (id) => axios.delete(`${API_BASE}/api/product_urls/${id}`);
-
-export const refreshPrices = () => axios.post(`${API_BASE}/api/refresh`);
-export const getPriceHistory = (oem) => axios.get(`${API_BASE}/api/price_history/${oem}`);
-
-export const getNotificationSettings = () => axios.get(`${API_BASE}/api/notifications/settings`);
-export const setNotificationSettings = (payload) => axios.post(`${API_BASE}/api/notifications/settings`, payload);
+export default instance;
